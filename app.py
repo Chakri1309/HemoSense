@@ -10,7 +10,9 @@ from src.explain import shap_values, lime_explanation
 from src.report_parser import extract_text_from_pdf, extract_text_from_docx, parse_lab_values
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-app = Flask(__name__)
+app = Flask(__name__,
+            template_folder=os.path.join(HERE, "templates"),
+            static_folder=os.path.join(HERE, "static"))
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB report limit
 
 # ---------- load artifacts once ----------
