@@ -1,10 +1,13 @@
+# HemoSense deploy dependencies (kept lean for Vercel's 500 MB function limit).
+# NOTE: shap / lime are intentionally NOT listed — they pull numba, llvmlite
+# and scikit-image (~200 MB+) and break the serverless bundle. The app detects
+# their absence and falls back to built-in SHAP + rule explanations, so all
+# panels (SHAP chart, LIME rules, feature table) keep working when deployed.
+# For local/dev use you may `pip install shap lime` for the full explainers.
 flask>=3.0
 numpy>=1.24
 pandas>=2.0
 scikit-learn>=1.3
 joblib>=1.3
-# optional explainability (app falls back gracefully without them):
-shap>=0.44.0
-lime>=0.2.0.1
 pypdf>=4.0
 python-docx>=1.1

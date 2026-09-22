@@ -48,7 +48,7 @@ def get_model(name: str | None):
     _MODEL_CACHE[key] = m
     return m
 
-def explain_payload(model, Xs):
+def explain_payload(model, Xs, cleaned=None):
     """Return SHAP + LIME data structures ready for Chart.js."""
     shap_list, lime_list, base = [], [], 0.5
     if X_BG is not None:
@@ -67,13 +67,24 @@ def explain_payload(model, Xs):
             lime_list = sorted(lime_list, key=lambda d: d["weight"])
         except Exception:
             pass
+        if not lime_list and shap_list and cleaned:
+            # `lime` not installed (e.g. Vercel): derive local rules from SHAP
+            # so the LIME panel stays populated with real model attributions.
+            try:
+                for s in shap_list:
+                    f = s["feature"]
+                    lime_list.append({"rule": f"{f} = {cleaned.get(f, '')}",
+                                      "weight": s["value"]})
+                lime_list = sorted(lime_list, key=lambda d: d["weight"])
+            except Exception:
+                pass
     return shap_list, lime_list, float(base)
 
 def do_predict(payload: dict, engine: str | None):
     eng = None if (not engine or str(engine).lower().startswith("best")) else engine
     res = predict(payload, model_name=eng)
     model = get_model(eng)
-    shap_list, lime_list, base = explain_payload(model, res["vector"])
+    shap_list, lime_list, base = explain_payload(model, res["vector"], res["cleaned"])
     actual = METRICS.get("best_model", "—") if eng is None else eng
     top = shap_list[0] if shap_list else {"feature": "Haemoglobin", "value": 0}
     return {
