@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HemoSense • Know Your Blood</title>
+<link rel="icon" href="{{ url_for('static', filename='img/drop-icon.svg') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<main class="page">
+
+  <!-- ============ TOP BAR (fixed) ============ -->
+  <nav class="topnav">
+    <span class="brand"><img src="{{ url_for('static', filename='img/drop-icon.svg') }}" alt="" width="26" height="26"> HemoSense</span>
+    <span class="topnav-links">
+      <a href="#upload">Report</a>
+      <a href="#predict">Predict</a>
+      <a href="#arena">Models</a>
+      <a href="#about">About</a>
+    </span>
+    <a href="#predict" class="nav-cta">Predict Now</a>
+  </nav>
+
+  <!-- ============ HERO (harish / features-02) ============ -->
+  <section aria-labelledby="hemosense-heading" class="hero">
+    <div aria-hidden="true" class="globe-stage">
+      <div class="globe-fade">
+        <div class="globe-glow"></div>
+        <div class="orbit-layer">
+          <div class="ring" style="--d:510px;--o:.18"></div>
+          <div class="ring" style="--d:565px;--o:.1425"></div>
+          <div class="ring" style="--d:630px;--o:.105"></div>
+          <div class="ring" style="--d:690px;--o:.0675"></div>
+          <div class="ring" style="--d:695px;--o:.03"></div>
+          <div class="orbit-line" style="animation-duration:12s"></div>
+          <div class="orbit-line" style="animation-duration:18s"></div>
+        </div>
+        <div id="globe" class="globe"></div>
+      </div>
+      <div class="globe-bottom-fade"></div>
+    </div>
+
+    <div class="hero-body">
+      <header class="hero-copy">
+        <p class="eyebrow">
+          <img alt="" aria-hidden="true" src="{{ url_for('static', filename='img/drop-icon.svg') }}" width="22" height="22">
+          AI Haematology Screening
+        </p>
+        <div class="hero-titles">
+          <h1 id="hemosense-heading">Know Your Blood.</h1>
+          <p class="sub">Explainable AI that screens for anaemia from routine blood values — predicted, then proven with SHAP &amp; LIME.</p>
+        </div>
+      </header>
+
+      <ul class="metrics">
+        <li>
+          <span class="metric-value" id="m-acc">—</span>
+          <span class="metric-label">Champion model accuracy</span>
+        </li>
+        <li>
+          <span class="metric-value">04</span>
+          <span class="metric-label">Models benchmarked live</span>
+        </li>
+        <li>
+          <span class="metric-value">10</span>
+          <span class="metric-label">Clinical blood features</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ REPORT UPLOAD ============ -->
+  <section id="upload" class="section reveal">
+    <p class="eyebrow"><img alt="" aria-hidden="true" src="{{ url_for('static', filename='img/drop-icon.svg') }}" width="18" height="18"> Blood Report</p>
+    <h2>Upload. Auto-fill. Predict.</h2>
+    <p class="sub-left">Drop a lab report — HemoSense reads <b>Haemoglobin, MCV, MCH, MCHC, RDW, RBC, HCT, Ferritin, Age &amp; Gender</b>, fills the panel, then the full pipeline continues.</p>
+    <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload blood report PDF or DOCX">
+      <div class="dz-icon">📤</div>
+      <div class="dz-text"><b>Drag &amp; drop your report here</b> or <span class="dz-browse">browse files</span></div>
+      <div class="dz-sub">.pdf / .docx • max 10 MB • CBC / haematology reports work best</div>
+      <input type="file" id="report-file" accept=".pdf,.docx" hidden>
+    </div>
+    <div id="upload-status" class="upload-status" hidden></div>
+    <div id="extracted" class="extracted" hidden>
+      <h3>Extracted from <span id="ext-filename"></span></h3>
+      <div id="ext-chips" class="ext-chips"></div>
+      <p class="sub-left small">Panel updated — review it below, then press <b>Predict</b>. <span id="ext-missing"></span></p>
+    </div>
+  </section>
+
+  <!-- ============ PREDICT ============ -->
+  <section id="predict" class="section grid2">
+    <div class="panel reveal">
+      <p class="eyebrow"><img alt="" aria-hidden="true" src="{{ url_for('static', filename='img/drop-icon.svg') }}" width="18" height="18"> Patient Panel</p>
+      <h2>Enter vitals.</h2>
+      <p class="sub-left">Sliders are cleaned, clipped &amp; scaled automatically.</p>
+      <form id="predict-form" method="POST" action="/predict">
+        <div class="field field-name"><div class="frow"><label for="in-Name">Patient name</label></div>
+          <input type="text" id="in-Name" name="Name" placeholder="e.g. Jane Doe" maxlength="60"
+            value="{% if form %}{{ form.get('Name','') }}{% endif %}" autocomplete="off">
+        </div>
+        <div class="engine-row">
+          <label>Prediction engine
+            <select name="engine" id="engine">
+              {% set sel = engine_sel or "Best (auto)" %}
+              {% for opt in ["Best (auto)", "Gradient Boosting", "Decision Tree", "SVM", "KNN"] %}
+              <option value="{{ opt }}" {% if opt == sel %}selected{% endif %}>{{ opt }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <div class="demo-btns">
+            <button type="button" id="demo-anaemic">Anaemic demo</button>
+            <button type="button" id="demo-healthy">Healthy demo</button>
+          </div>
+        </div>
+        <div class="field"><div class="frow"><label>Gender</label></div>
+          <select name="Gender" id="in-Gender">
+            <option value="Female" {% if form and form.get('Gender')=='Female' %}selected{% endif %}>Female</option>
+            <option value="Male" {% if form and form.get('Gender')=='Male' %}selected{% endif %}>Male</option>
+          </select>
+        </div>
+        <div class="sliders" id="slider-grid"></div>
+        <button class="cta" type="submit">Predict Anaemia<span class="cta-sub">SHAP + LIME explanation included</span></button>
+        <div class="shimmer" id="loading" hidden></div>
+      </form>
+      <p class="refs">Refs — Hb M ≥13 • F ≥12 g/dL • MCV 80–100 • MCH 27–33 • MCHC 32–36 • RDW 11.5–14.5% • Ferritin 30–300</p>
+    </div>
+
+    <div class="panel reveal" id="result-card">
+      <p class="eyebrow"><img alt="" aria-hidden="true" src="{{ url_for('static', filename='img/drop-icon.svg') }}" width="18" height="18"> Result</p>
+      <h2>Verdict.</h2>
+      <div id="result-empty">
+        <p class="sub-left">Tune the panel, pick an engine, hit <b>Predict</b> — verdict, risk gauge and reasoning appear here.</p>
+        <div class="shimmer"></div>
+      </div>
+      <div id="result-box" hidden>
+        <p class="patient-line" id="patient-line"></p>
+        <div id="verdict" class="verdict">—</div>
+        <div class="gauge-wrap">
+          <div class="gauge"><div class="needle" id="needle"></div><div class="hub"></div></div>
+          <div class="gauge-num"><span id="prob-num">0.000</span><small>anaemia probability</small></div>
+        </div>
+        <div class="confbar"><div id="conf-fill"></div></div>
+        <p class="sub-left small" id="conf-text"></p>
+        <div class="report-btns">
+          <button type="button" id="btn-download" class="ghost-btn">↓ Download Report</button>
+          <button type="button" id="btn-print" class="ghost-btn">⎙ Print / PDF</button>
+        </div>
+        <h3>Feature-by-feature explanation</h3>
+        <p class="sub-left small" id="explain-summary"></p>
+        <div class="table-wrap"><table id="feat-table">
+          <thead><tr><th>Feature</th><th>Value</th><th>Status</th><th>What it means</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <h3>Why this prediction <small>(SHAP)</small></h3>
+        <canvas id="shap-chart" height="260"></canvas>
+        <p class="callout" id="top-driver"></p>
+        <h3>LIME local rules</h3>
+        <canvas id="lime-chart" height="260"></canvas>
+        <div id="lime-list" class="lime-list"></div>
+        <h3>Next steps</h3>
+        <p class="sub-left" id="advice"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ARENA ============ -->
+  <section id="arena" class="section reveal">
+    <p class="eyebrow"><img alt="" aria-hidden="true" src="{{ url_for('static', filename='img/drop-icon.svg') }}" width="18" height="18"> Model Arena</p>
+    <h2>SVM vs Decision Tree vs KNN vs Gradient Boosting.</h2>
+    <p class="sub-left">Every engine scored on the same held-out test set. The champion serves the Best (auto) engine.</p>
+    <div class="arena-grid">
+      <div class="table-wrap"><table id="metrics-table">
+        <thead><tr><th>Model</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th><th>CV acc</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="arena-side">
+        <canvas id="arena-chart" height="300"></canvas>
+        <p class="callout">Champion: <b>{{ best }}</b> — served by the Best (auto) engine.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ABOUT ============ -->
+  <section id="about" class="section grid2">
+    <div class="panel reveal">
+      <p class="eyebrow"><img alt="" aria-hidden="true" src="{{ url_for('static', filename='img/drop-icon.svg') }}" width="18" height="18"> Signals</p>
+      <h2>What the model learned.</h2>
+      <p class="sub-left">Low haemoglobin + microcytic MCV + high RDW + low ferritin — the classic iron-deficiency signature. Macrocytic MCV with low Hb points to the B12 / folate pathway.</p>
+      <ul class="metrics metrics-4">
+        <li><span class="metric-value sm">Hb</span><span class="metric-label">#1 signal</span></li>
+        <li><span class="metric-value sm">MCV</span><span class="metric-label">micro / macro</span></li>
+        <li><span class="metric-value sm">RDW</span><span class="metric-label">&gt;14.5 flag</span></li>
+        <li><span class="metric-value sm">Fer</span><span class="metric-label">&lt;30 flag</span></li>
+      </ul>
+    </div>
+    <div class="panel reveal">
+      <p class="eyebrow"><img alt="" aria-hidden="true" src="{{ url_for('static', filename='img/drop-icon.svg') }}" width="18" height="18"> Pipeline</p>
+      <h2>Run it locally.</h2>
+      <p class="sub-left"><b>Input → Cleaning → Prediction → SHAP + LIME → Verdict + risk.</b></p>
+      <pre>pip install -r requirements.txt
+python src/generate_data.py
+python src/train.py
+python app.py   # → http://127.0.0.1:5000</pre>
+      <p class="sub-left small">Screening aid only — confirm with labs + clinician.</p>
+    </div>
+  </section>
+
+  <footer>HemoSense • Explainable AI for healthier blood</footer>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+<button id="to-top" title="Back to top">↑</button>
+
+<script>
+window.HEMO = {
+  metrics: {{ metrics | tojson }},
+  serverResult: {{ (result | default(None)) | tojson }},
+  serverForm: {{ (form | default(None)) | tojson }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/globe.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

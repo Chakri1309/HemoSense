@@ -1,0 +1,89 @@
+{
+  "best_model": "Decision Tree",
+  "features": [
+    "Age",
+    "Gender",
+    "Haemoglobin",
+    "MCV",
+    "MCH",
+    "MCHC",
+    "RDW",
+    "RBC",
+    "HCT",
+    "Ferritin"
+  ],
+  "results": {
+    "SVM": {
+      "accuracy": 0.96,
+      "precision": 0.9629,
+      "recall": 0.9564,
+      "f1": 0.9597,
+      "roc_auc": 0.9775,
+      "cv_accuracy": 0.9677,
+      "confusion_matrix": [
+        [
+          581,
+          22
+        ],
+        [
+          26,
+          571
+        ]
+      ]
+    },
+    "Decision Tree": {
+      "accuracy": 0.9775,
+      "precision": 0.9782,
+      "recall": 0.9765,
+      "f1": 0.9774,
+      "roc_auc": 0.9764,
+      "cv_accuracy": 0.9752,
+      "confusion_matrix": [
+        [
+          590,
+          13
+        ],
+        [
+          14,
+          583
+        ]
+      ]
+    },
+    "KNN": {
+      "accuracy": 0.9558,
+      "precision": 0.9674,
+      "recall": 0.943,
+      "f1": 0.955,
+      "roc_auc": 0.9722,
+      "cv_accuracy": 0.9546,
+      "confusion_matrix": [
+        [
+          584,
+          19
+        ],
+        [
+          34,
+          563
+        ]
+      ]
+    },
+    "Gradient Boosting": {
+      "accuracy": 0.9742,
+      "precision": 0.9717,
+      "recall": 0.9765,
+      "f1": 0.9741,
+      "roc_auc": 0.9774,
+      "cv_accuracy": 0.9823,
+      "confusion_matrix": [
+        [
+          586,
+          17
+        ],
+        [
+          14,
+          583
+        ]
+      ]
+    }
+  }
+}
