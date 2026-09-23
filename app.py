@@ -166,5 +166,13 @@ def api_metrics():
 def health():
     return jsonify({"status": "ok", "best_model": METRICS.get("best_model")})
 
+@app.route("/api/debug")
+def debug_path():
+    """Temporary diagnostic: show what path/environ the platform passes."""
+    e = request.environ
+    return jsonify({"PATH_INFO": e.get("PATH_INFO"), "SCRIPT_NAME": e.get("SCRIPT_NAME"),
+                    "REQUEST_METHOD": e.get("REQUEST_METHOD"), "path": request.path,
+                    "url": request.url})
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
