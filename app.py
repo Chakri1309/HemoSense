@@ -174,5 +174,26 @@ def debug_path():
                     "REQUEST_METHOD": e.get("REQUEST_METHOD"), "path": request.path,
                     "url": request.url})
 
+
+_CATCHALL_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+
+@app.route("/api/index", defaults={"subpath": ""}, methods=_CATCHALL_METHODS)
+@app.route("/api/index/<path:subpath>", methods=_CATCHALL_METHODS)
+@app.route("/api/index.py", defaults={"subpath": ""}, methods=_CATCHALL_METHODS)
+@app.route("/api/index.py/<path:subpath>", methods=_CATCHALL_METHODS)
+def _vercel_prefix_catchall(subpath):
+    """Serve the app even if the platform forwards the rewrite destination
+    (/api/index...) as the request path instead of the original URL."""
+    from flask import abort
+    target = "/" + subpath
+    if target.startswith("/static/"):
+        return app.send_static_file(target[len("/static/"):])
+    adapter = app.url_map.bind_to_environ(request.environ)
+    try:
+        endpoint, values = adapter.match(target, method=request.method)
+    except Exception:
+        abort(404)
+    return app.view_functions[endpoint](**values)
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
