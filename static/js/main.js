@@ -44,12 +44,16 @@ document.getElementById('demo-healthy').onclick = () => {
   Object.entries(v).forEach(([k,val])=>{ const el=document.getElementById('in-'+k); if(el){el.value=val; el.dispatchEvent(new Event('input'));} });
 };
 
+const HAS_CHART = (typeof Chart !== 'undefined');
+if (HAS_CHART) {
 Chart.defaults.color = '#9297a0';
 Chart.defaults.borderColor = '#18191b';
 Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+}
 let lastResult = null, lastInputs = null;
 
 function hbar(canvas, labels, values, title){
+  if(!HAS_CHART) return;
   if(canvas._chart) canvas._chart.destroy();
   const colors = values.map(v => v >= 0 ? '#fafafa' : '#52525b');
   canvas._chart = new Chart(canvas, {type:'bar',
@@ -193,6 +197,7 @@ document.getElementById('predict-form').addEventListener('submit', async (e) => 
   });
   const c = document.getElementById('arena-chart');
   const mono = ['#fafafa','#d4d4d8','#a1a1aa','#71717a','#52525b'];
+  if(!HAS_CHART) return;
   new Chart(c, {type:'bar', data:{labels:names, datasets:['accuracy','precision','recall','f1','roc_auc'].map((k,i)=>({label:k, data:names.map(n=>m[n][k]), backgroundColor:mono[i], borderRadius:6}))},
     options:{plugins:{legend:{position:'bottom', labels:{color:'#adb1b8'}}}, scales:{y:{min:0.9,max:1, grid:{color:'#18191b'}, ticks:{color:'#6b707a'}}, x:{grid:{display:false}, ticks:{color:'#adb1b8'}}}, animation:{duration:1000}}});
 })();
@@ -245,7 +250,7 @@ function toast(msg, ms=4200){
     extBox.hidden = true;
     try{
       const fd = new FormData(); fd.append('report', file);
-      const res = await fetch('/api/parse-report', {method:'POST', body: fd});
+      const res = await fetch('/api/parse_report', {method:'POST', body: fd});
       const data = await res.json();
       if(!data.ok){ showStatus('err', '❌ ' + (data.error || 'Could not parse report.')); return; }
       const vals = data.values || {};

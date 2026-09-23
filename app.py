@@ -15,6 +15,66 @@ app = Flask(__name__,
             static_folder=os.path.join(HERE, "static"))
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB report limit
 
+
+class VercelRewriteFix:
+    """Strip a /api/index* rewrite prefix so Flask sees the original route.
+
+    Applied here (not in api/*.py) so EVERY entrypoint — local runs and each
+    serverless function file — gets it. No-op when the path is already clean.
+    """
+
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        path = environ.get("PATH_INFO") or ""
+        script = environ.get("SCRIPT_NAME") or ""
+        full = (script.rstrip("/") + "/" + path.lstrip("/")) if script else path
+        if full == "/api/index" or full.startswith("/api/index/"):
+            rest = full[len("/api/index"):] or "/"
+            environ["SCRIPT_NAME"] = ""
+            environ["PATH_INFO"] = rest
+        elif path and not path.startswith("/"):
+            environ["PATH_INFO"] = "/" + path
+        return self.wsgi_app(environ, start_response)
+
+
+app.wsgi_app = VercelRewriteFix(app.wsgi_app)
+
+
+def _read_static(rel):
+    """Read a static asset for server-side inlining (zero /static/* dependency)."""
+    try:
+        with open(os.path.join(HERE, rel), encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
+def _drop_icon_assets():
+    import re
+    import urllib.parse
+    raw = _read_static(os.path.join("static", "img", "drop-icon.svg")).strip()
+    sized_out = re.sub(r'\s(width|height)="[^"]*"', "", raw)
+    sized_out = sized_out.replace("<svg ", '<svg class="dic" aria-hidden="true" ', 1)
+    favicon = "data:image/svg+xml," + urllib.parse.quote(re.sub(r">\s+<", "><", raw))
+    return sized_out, favicon
+
+
+DROP_SVG, DROP_FAVICON = _drop_icon_assets()
+
+
+INLINE_CSS = _read_static(os.path.join("static", "css", "style.css"))
+INLINE_GLOBE_JS = _read_static(os.path.join("static", "js", "globe.js"))
+INLINE_MAIN_JS = _read_static(os.path.join("static", "js", "main.js"))
+
+
+def _template_vars(**extra):
+    extra.update(inline_css=INLINE_CSS, inline_globe_js=INLINE_GLOBE_JS,
+                 inline_main_js=INLINE_MAIN_JS, drop_icon=DROP_SVG,
+                 drop_favicon=DROP_FAVICON)
+    return extra
+
 # ---------- load artifacts once ----------
 def _load_metrics():
     p = os.path.join(HERE, "models", "metrics.json")
@@ -106,8 +166,8 @@ def do_predict(payload: dict, engine: str | None):
 # ---------- routes ----------
 @app.route("/")
 def index():
-    return render_template("index.html", metrics=METRICS,
-                           best=METRICS.get("best_model", "—"))
+    return render_template("index.html", **_template_vars(
+        metrics=METRICS, best=METRICS.get("best_model", "—")))
 
 @app.route("/predict", methods=["POST"])
 def predict_form():
@@ -119,9 +179,9 @@ def predict_form():
         result = do_predict(payload, engine)
     except Exception as e:
         result = {"error": str(e)}
-    return render_template("index.html", metrics=METRICS,
-                           best=METRICS.get("best_model", "—"),
-                           result=result, form=payload, engine_sel=engine)
+    return render_template("index.html", **_template_vars(
+        metrics=METRICS, best=METRICS.get("best_model", "—"),
+        result=result, form=payload, engine_sel=engine))
 
 @app.route("/api/predict", methods=["POST"])
 def api_predict():
@@ -135,6 +195,7 @@ def api_predict():
         return jsonify({"ok": False, "error": str(e)}), 400
 
 @app.route("/api/parse-report", methods=["POST"])
+@app.route("/api/parse_report", methods=["POST"])
 def api_parse_report():
     """Upload a blood-report PDF/DOCX -> extract lab values -> auto-fill + predict continues."""
     f = request.files.get("report")
@@ -163,6 +224,7 @@ def api_metrics():
     return jsonify(METRICS)
 
 @app.route("/health")
+@app.route("/api/health")
 def health():
     return jsonify({"status": "ok", "best_model": METRICS.get("best_model")})
 
