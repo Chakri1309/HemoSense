@@ -67,7 +67,7 @@ body{
 .nav-cta:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(255,255,255,.25)}
 .topnav-links a{color:var(--eyebrow);text-decoration:none;font-size:.9rem;font-weight:500;transition:color .25s}
 .topnav-links a:hover{color:#fff}
-@media(max-width:640px){.topnav-links{display:none}}
+@media(max-width:640px){.topnav-links{display:none}.nav-cta{margin-left:auto}}
 .hero-copy{display:flex;width:100%;max-width:1100px;flex-direction:column;align-items:center;gap:16px;margin-top:-144px;padding:0 8px;text-align:center}
 @media(min-width:640px){.hero-copy{margin-top:0}}
 @media(min-width:768px){.hero-copy{margin-top:-8px}}
